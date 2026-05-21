@@ -1,0 +1,8 @@
+[
+  {
+    "name": "Muryokusho",
+    "version": "0.1.7",
+    "author": "masaki39",
+    "desc": "Capture selected text or prompt for a word, translate via OpenAI, and add to Anki"
+  }
+]
