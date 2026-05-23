@@ -113,13 +113,33 @@ function obj:addCard(word)
 	end)
 end
 
--- Show input dialog and add card
+-- Show input dialogs (front → translate → back editable) and add card
 function obj:captureAndAdd()
-	local prevApp = hs.application.frontmostApplication()
-	ui.promptWord("", function(input)
-		self:addCard(input)
+	ui.promptWord("", function(front)
+		self:_dismissAlert()
+		self._alertId = hs.alert.show(front .. "\n⏳ Translating…", ALERT_STYLE, hs.screen.mainScreen(), 0)
+		openai.translate(front, self.openaiModel, self.targetLanguage, self.customPrompt, function(result, err)
+			self:_dismissAlert()
+			if err then
+				local msg = "OpenAI error: " .. tostring(err)
+				print("[Muryokusho] " .. msg)
+				hs.notify.show("Muryokusho", "", msg)
+				return
+			end
+			ui.promptBack(result, function(back)
+				local ankiBack = back:gsub("\n", "<br>")
+				anki.addNote(self.ankiDeck, self.ankiModelName, self.ankiFrontField, self.ankiBackField, front, ankiBack, self.allowDuplicate, function(noteErr)
+					if noteErr then
+						local msg = tostring(noteErr):lower():find("duplicate") and "Duplicate: " .. front or "Anki error: " .. tostring(noteErr)
+						print("[Muryokusho] " .. msg)
+						hs.notify.show("Muryokusho", "", msg)
+					else
+						hs.notify.show("Muryokusho", "", "Added: " .. front)
+					end
+				end)
+			end)
+		end)
 	end)
-	if prevApp then prevApp:activate() end
 end
 
 -- Start the spoon
