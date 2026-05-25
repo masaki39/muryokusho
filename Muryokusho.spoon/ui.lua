@@ -73,10 +73,15 @@ function M.promptBack(defaultText, callback)
 <textarea id="t">%s</textarea>
 <div class="btns">
   <button id="cancel" onclick="post('cancel','')">Cancel</button>
-  <button id="add" onclick="post('add',document.getElementById('t').value)">Add</button>
+  <button id="add" onclick="post('add',document.getElementById('t').value)">Add ⌘↵</button>
 </div>
 <script>
 function post(a,t){window.webkit.messageHandlers.muryokusho_back.postMessage({action:a,text:t})}
+var t=document.getElementById('t');t.focus();t.setSelectionRange(t.value.length,t.value.length)
+document.addEventListener('keydown',function(e){
+  if(e.metaKey&&e.key==='Enter'){e.preventDefault();post('add',t.value)}
+  if(e.key==='Escape'){post('cancel','')}
+})
 </script>
 </body>
 </html>]], escaped)
