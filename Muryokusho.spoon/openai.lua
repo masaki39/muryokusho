@@ -6,26 +6,33 @@ local M = {}
 M.apiKey  = nil
 M.baseUrl = "https://api.openai.com/v1/chat/completions"
 
-local function buildPrompt(targetLanguage)
+local LANG_NAME = {
+	ja = "Japanese", en = "English", ["zh-CN"] = "Chinese",
+	ko = "Korean", fr = "French", de = "German",
+	es = "Spanish", it = "Italian", pt = "Portuguese",
+}
+
+local function buildPrompt(language)
+	local langName = LANG_NAME[language] or language
 	return string.format([[
 You are a concise vocabulary assistant.
 Given a word or phrase, output exactly two lines:
 Line 1: the %s translation (with reading if applicable)
 Line 2: a short example sentence using the word (in English)
 No extra commentary.
-]], targetLanguage)
+]], langName)
 end
 
 -- Translate a word asynchronously.
 -- customPrompt overrides the built-in prompt when provided.
 -- callback(result: string|nil, err: string|nil)
-function M.translate(word, model, targetLanguage, customPrompt, callback)
+function M.translate(word, model, language, customPrompt, callback)
 	if not M.apiKey or M.apiKey == "" then
 		callback(nil, "API key not set")
 		return
 	end
 
-	local prompt = customPrompt or buildPrompt(targetLanguage)
+	local prompt = customPrompt or buildPrompt(language)
 
 	local body = hs.json.encode({
 		model = model,

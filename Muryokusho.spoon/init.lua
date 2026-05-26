@@ -1,6 +1,6 @@
 -- Muryokusho.spoon/init.lua
 -- Spoon entry point for Muryokusho (無量空処)
--- Captures clipboard or prompts for a word, translates via OpenAI, and adds to Anki.
+-- Captures clipboard or prompts for a word, translates, and adds to Anki.
 
 local _spoonDir = (function()
 	local info = debug.getinfo(1, "S")
@@ -12,10 +12,11 @@ local function _require(name)
 	return dofile(_spoonDir .. "/" .. name .. ".lua")
 end
 
-local keychain = _require("keychain")
-local openai   = _require("openai")
-local anki     = _require("anki")
-local ui       = _require("ui")
+local keychain        = _require("keychain")
+local openai          = _require("openai")
+local google_translate = _require("google_translate")
+local anki            = _require("anki")
+local ui              = _require("ui")
 
 local obj = {}
 obj.__index = obj
@@ -30,9 +31,10 @@ obj.ankiDeck          = "Default"      -- Anki deck name
 obj.ankiModelName     = "Basic"        -- Anki note type
 obj.ankiFrontField    = "Front"        -- front field name
 obj.ankiBackField     = "Back"         -- back field name
-obj.openaiModel       = "gpt-4.1-nano" -- OpenAI model
-obj.targetLanguage    = "Japanese"     -- translation target language
-obj.customPrompt      = nil            -- override system prompt (nil = use built-in)
+obj.translationMethod = "google"       -- "google" | "openai"
+obj.language          = "ja"           -- locale code (e.g. "ja", "en", "zh-CN")
+obj.openaiModel       = "gpt-4.1-nano" -- OpenAI model (used when translationMethod = "openai")
+obj.customPrompt      = nil            -- override system prompt (nil = use built-in, openai only)
 obj.allowDuplicate    = false          -- allow duplicate Anki cards
 obj.alertDuration     = 6             -- seconds to show translation alert
 
@@ -86,15 +88,24 @@ function obj:_loadApiKey()
 	openai.apiKey = key
 end
 
+-- Translate word using the configured method
+function obj:_translate(word, callback)
+	if self.translationMethod == "google" then
+		google_translate.translate(word, self.language, callback)
+	else
+		openai.translate(word, self.openaiModel, self.language, self.customPrompt, callback)
+	end
+end
+
 -- Core action: translate word and add to Anki
 function obj:addCard(word)
 	if not word or word == "" then return end
 	self:_dismissAlert()
 	self._alertId = hs.alert.show(word .. "\n⏳ Translating…", ALERT_STYLE, hs.screen.mainScreen(), 0)
-	openai.translate(word, self.openaiModel, self.targetLanguage, self.customPrompt, function(result, err)
+	self:_translate(word, function(result, err)
 		if err then
 			self:_dismissAlert()
-			local msg = "OpenAI error: " .. tostring(err)
+			local msg = "Translation error: " .. tostring(err)
 			print("[Muryokusho] " .. msg)
 			hs.notify.show("Muryokusho", "", msg)
 			return
@@ -118,10 +129,10 @@ function obj:captureAndAdd()
 	ui.promptWord("", function(front)
 		self:_dismissAlert()
 		self._alertId = hs.alert.show(front .. "\n⏳ Translating…", ALERT_STYLE, hs.screen.mainScreen(), 0)
-		openai.translate(front, self.openaiModel, self.targetLanguage, self.customPrompt, function(result, err)
+		self:_translate(front, function(result, err)
 			self:_dismissAlert()
 			if err then
-				local msg = "OpenAI error: " .. tostring(err)
+				local msg = "Translation error: " .. tostring(err)
 				print("[Muryokusho] " .. msg)
 				hs.notify.show("Muryokusho", "", msg)
 				return
@@ -144,7 +155,9 @@ end
 
 -- Start the spoon
 function obj:start()
-	self:_loadApiKey()
+	if self.translationMethod ~= "google" then
+		self:_loadApiKey()
+	end
 	return self
 end
 

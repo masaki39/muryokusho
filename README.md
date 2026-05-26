@@ -1,20 +1,19 @@
 # Muryokusho (無量空処).spoon
 
-Hammerspoon Spoon that prompts for a word, translates it via OpenAI, shows the result on screen, and adds it to Anki automatically.
+Hammerspoon Spoon that prompts for a word, translates it, shows the result on screen, and adds it to Anki automatically.
 
 ![Input dialog](assets/input-dialog.png)
 
 - Global hotkey — works from any app
-- Translates with OpenAI Chat Completions
+- Translates via Google Translate (default, free, no API key) or OpenAI Chat Completions
 - Shows translation alert on screen (dismissed by click, any key, or timeout)
 - Adds a card to Anki via [AnkiConnect](https://ankiweb.net/shared/info/2055492159)
-- API key stored securely in macOS Keychain
 
 ## Prerequisites
 
 - [Hammerspoon](https://www.hammerspoon.org/)
 - [Anki](https://apps.ankiweb.net/) with the [AnkiConnect](https://ankiweb.net/shared/info/2055492159) add-on (default port 8765)
-- OpenAI API key
+- OpenAI API key *(only when using `translationMethod = "openai"`)*
 
 ## Installation
 
@@ -24,15 +23,7 @@ Install [Hammerspoon](https://www.hammerspoon.org/) first if you haven't:
 brew install --cask hammerspoon
 ```
 
-### 1. Store your OpenAI API key in Keychain
-
-Run once in Terminal:
-
-```bash
-security add-generic-password -a "muryokusho" -s "openai-api-key" -w "sk-..."
-```
-
-### 2. Install the Spoon
+### 1. Install the Spoon
 
 Download [Muryokusho.spoon.zip](https://github.com/masaki39/muryokusho/raw/main/Spoons/Muryokusho.spoon.zip), open it to install, and add to `~/.hammerspoon/init.lua`:
 
@@ -40,6 +31,20 @@ Download [Muryokusho.spoon.zip](https://github.com/masaki39/muryokusho/raw/main/
 hs.loadSpoon("Muryokusho")
 spoon.Muryokusho:start()
 spoon.Muryokusho:bindHotkeys({ addCard = { {"ctrl", "alt"}, "w" } })
+```
+
+### 2. (Optional) Use OpenAI instead of Google Translate
+
+Store your OpenAI API key in Keychain:
+
+```bash
+security add-generic-password -a "muryokusho" -s "openai-api-key" -w "sk-..."
+```
+
+Then set in your Hammerspoon config:
+
+```lua
+spoon.Muryokusho.translationMethod = "openai"
 ```
 
 <details>
@@ -60,15 +65,16 @@ spoon.SpoonInstall:andUse("Muryokusho", {
     repo  = "muryokusho",
     start = true,
     config = {
-        ankiDeck       = "Default",      -- Anki deck name
-        ankiModelName  = "Basic",        -- Anki note type
-        ankiFrontField = "Front",        -- front field name
-        ankiBackField  = "Back",         -- back field name
-        openaiModel    = "gpt-4.1-nano", -- OpenAI model
-        targetLanguage = "Japanese",     -- translation target language
-        allowDuplicate = false,          -- allow duplicate Anki cards
-        alertDuration  = 6,              -- seconds to show alert (click/key also dismisses)
-        -- customPrompt = nil,           -- set to override the built-in system prompt
+        ankiDeck          = "Default",      -- Anki deck name
+        ankiModelName     = "Basic",        -- Anki note type
+        ankiFrontField    = "Front",        -- front field name
+        ankiBackField     = "Back",         -- back field name
+        translationMethod = "google",       -- "google" | "openai"
+        language          = "ja",           -- locale code for translation target
+        openaiModel       = "gpt-4.1-nano", -- OpenAI model (openai method only)
+        allowDuplicate    = false,          -- allow duplicate Anki cards
+        alertDuration     = 6,             -- seconds to show alert (click/key also dismisses)
+        -- customPrompt = nil,             -- override built-in system prompt (openai only)
     },
     hotkeys = {
         addCard = { {"ctrl", "alt"}, "w" },
@@ -86,9 +92,10 @@ spoon.SpoonInstall:andUse("Muryokusho", {
 | `ankiModelName` | `"Basic"` | Anki note type |
 | `ankiFrontField` | `"Front"` | Front field name |
 | `ankiBackField` | `"Back"` | Back field name |
-| `openaiModel` | `"gpt-4.1-nano"` | OpenAI model |
-| `targetLanguage` | `"Japanese"` | Translation target language |
-| `customPrompt` | `nil` | Override built-in system prompt |
+| `translationMethod` | `"google"` | Translation backend: `"google"` (free, no key) or `"openai"` |
+| `language` | `"ja"` | Translation target as locale code (`"ja"`, `"en"`, `"zh-CN"`, `"ko"`, etc.) |
+| `openaiModel` | `"gpt-4.1-nano"` | OpenAI model (used when `translationMethod = "openai"`) |
+| `customPrompt` | `nil` | Override built-in system prompt (OpenAI only) |
 | `allowDuplicate` | `false` | Allow duplicate Anki cards |
 | `alertDuration` | `6` | Seconds to show translation alert (click or any key also dismisses) |
 
